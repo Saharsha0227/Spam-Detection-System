@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spam Detector</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>Spam Detector</h1>
+    <p class="subtitle">Paste a message below to check whether it's spam or not.</p>
+
+    <form id="classify-form" novalidate>
+      <label for="text-input">Message</label>
+      <textarea
+        id="text-input"
+        name="text"
+        rows="6"
+        placeholder="Enter your message here…"
+        required
+      ></textarea>
+
+      <button type="submit" id="submit-btn">Check for Spam</button>
+    </form>
+
+    <div id="loading" class="loading hidden" aria-live="polite" aria-label="Loading">
+      <span class="spinner" aria-hidden="true"></span>
+      Classifying…
+    </div>
+
+    <section id="result" class="result hidden" aria-live="polite">
+      <h2>Result</h2>
+      <p id="result-label" class="result-label"></p>
+      <p id="result-confidence" class="result-confidence"></p>
+    </section>
+
+    <section id="error" class="error hidden" aria-live="assertive">
+      <p id="error-message"></p>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById('classify-form');
+    const textInput = document.getElementById('text-input');
+    const submitBtn = document.getElementById('submit-btn');
+    const loadingEl = document.getElementById('loading');
+    const resultEl = document.getElementById('result');
+    const resultLabel = document.getElementById('result-label');
+    const resultConfidence = document.getElementById('result-confidence');
+    const errorEl = document.getElementById('error');
+    const errorMessage = document.getElementById('error-message');
+
+    function setLoading(isLoading) {
+      submitBtn.disabled = isLoading;
+      loadingEl.classList.toggle('hidden', !isLoading);
+    }
+
+    function showResult(label, confidence) {
+      const pct = (confidence * 100).toFixed(1);
+      resultLabel.textContent = label === 'spam' ? '🚫 Spam' : '✅ Not Spam';
+      resultLabel.className = 'result-label ' + label;
+      resultConfidence.textContent = `Confidence: ${pct}%`;
+      resultEl.classList.remove('hidden');
+      errorEl.classList.add('hidden');
+    }
+
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorEl.classList.remove('hidden');
+      resultEl.classList.add('hidden');
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const text = textInput.value.trim();
+      if (!text) {
+        showError('Please enter a message before submitting.');
+        return;
+      }
+
+      setLoading(true);
+      resultEl.classList.add('hidden');
+      errorEl.classList.add('hidden');
+
+      try {
+        const response = await fetch('/api/classify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          const msg = data?.error || data?.message || `Request failed (HTTP ${response.status}).`;
+          showError(msg);
+          return;
+        }
+
+        showResult(data.label, data.confidence);
+      } catch (err) {
+        showError('Could not reach the classification service. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    });
+  </script>
+</body>
+</html>

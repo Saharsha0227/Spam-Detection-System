@@ -1,0 +1,19 @@
+services:
+  ml:
+    build: ./ml
+    expose:
+      - "5000"
+    volumes:
+      - model-store:/app/Model_Store
+
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      - ML_SERVICE_URL=http://ml:5000
+    depends_on:
+      - ml
+
+volumes:
+  model-store:
